@@ -21,13 +21,13 @@ public class CustomerUserDetailsService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-       userDetails = userDao.findByEmailId(email);
-       if(!Objects.isNull(userDetails)){
-           return new org.springframework.security.core.userdetails.User(userDetails.getEmail(),userDetails.getPassword(),new ArrayList<>());
-       }
-       else{
-           throw new UsernameNotFoundException("user not found");
-       }
+        userDetails = userDao.findByEmailId(email);
+        if(!Objects.isNull(userDetails)){
+            return new org.springframework.security.core.userdetails.User(userDetails.getEmail(),userDetails.getPassword(),new ArrayList<>());
+        }
+        else{
+            throw new UsernameNotFoundException("user not found");
+        }
     }
 
     public User getUserDetails(){

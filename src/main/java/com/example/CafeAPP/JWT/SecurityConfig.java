@@ -14,6 +14,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import static org.springframework.security.config.Customizer.withDefaults;
 
@@ -25,21 +27,6 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
     @Autowired
     JwtFilter jwtFilter;
-//    @Bean
-//    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-//        http
-//                .cors(cors->cors.configurationSource(
-//                        request -> new CorsConfiguration().applyPermitDefaultValues()))
-//                .authorizeHttpRequests(authorize -> authorize
-//                        .requestMatchers("/user/login","/user/register","/user/forgotPassword")
-//                        .permitAll()  // Allows access to paths under /public
-//                        .anyRequest().authenticated()  // All other paths require authentication
-//                )
-//                .formLogin(withDefaults())  // Default form login configuration
-//                .logout(withDefaults());    // Default logout configuration
-//        return http.build();
-//    }
-
 
     @Override
     protected void configure(AuthenticationManagerBuilder auth) throws Exception {
@@ -57,13 +44,28 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
         return super.authenticationManager();
     }
 
+    // CORS Configuration Bean
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        //configuration.addAllowedOrigin("http://cafeapp-frontend.s3-website.ap-south-1.amazonaws.com");  // Your frontend URL
+        configuration.addAllowedOrigin("http://localhost:4200/");
+        configuration.addAllowedMethod("*");  // Allow all HTTP methods (GET, POST, etc.)
+        configuration.addAllowedHeader("*");  // Allow all headers
+        configuration.setAllowCredentials(true);  // Allow credentials (cookies, authorization headers)
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);  // Apply the CORS configuration to all URLs
+        return source;
+    }
+
     @Override
     protected void configure(HttpSecurity http) throws Exception {
-        http.cors().configurationSource(request -> new CorsConfiguration().applyPermitDefaultValues())
+        http.cors().configurationSource(corsConfigurationSource())
                 .and()
                 .csrf().disable()
                 .authorizeRequests()
-                .antMatchers("/user/login","/user/signup","/user/forgotPassword") //if these urls are hit simply allow permission to all
+                .antMatchers("/user/login","/user/signup","/user/forgotPassword","/","/user/checkToken") //if these urls are hit simply allow permission to all
                 .permitAll()
                 .anyRequest() //in case of any request apart from above 3 we need authentication
                 .authenticated()

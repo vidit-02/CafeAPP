@@ -2,7 +2,7 @@ package com.example.CafeAPP.constants;
 
 public class CafeConstants {
 
-    public static final String STORE_LOCATION = "D:\\CafeApp\\cafe-stored-files";
+    public static final String STORE_LOCATION = "D:\\cafe-stored-files";
     public static final String SOMETHING_WENT_WRONG = "Something Went Wrong";
     public static final String INVALID_DATA = "Invalid Data";
     public static final String USER_ALREADY_EXIST = "User Already Exists";

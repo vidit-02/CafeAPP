@@ -44,6 +44,7 @@ public class BillServiceImpl implements BillService {
     @Override
     public ResponseEntity<String> generateReport(Map<String, Object> requestMap) {
         log.info("inside generateReport");
+        log.info("generate report map::::"+requestMap);
         try{
             String fileName;
             if(validateRequestMap(requestMap)){
@@ -98,7 +99,8 @@ public class BillServiceImpl implements BillService {
         log.info("inside addRow");
         table.addCell((String) data.get("name"));
         table.addCell((String) data.get("category"));
-        table.addCell((String) data.get("quantity"));
+        //table.addCell((String) data.get("quantity"));
+         table.addCell(data.get("quantity").toString());
         table.addCell(Double.toString((Double) data.get("price")));
         table.addCell(Double.toString((Double) data.get("total")));
     }
@@ -136,7 +138,7 @@ public class BillServiceImpl implements BillService {
             bill.setName((String)requestMap.get("name"));
             bill.setEmail((String)requestMap.get("email"));
             bill.setContactNumber((String)requestMap.get("contactNumber"));
-            bill.setPaymentMethod((String)requestMap.get("paymentmethod"));
+            bill.setPaymentMethod((String)requestMap.get("paymentMethod"));
             bill.setTotalAmount(Integer.parseInt((String) requestMap.get("totalAmount")));
             bill.setCreatedBy(jwtFilter.getCurrentUser());
             // Convert productDetails to JSON string

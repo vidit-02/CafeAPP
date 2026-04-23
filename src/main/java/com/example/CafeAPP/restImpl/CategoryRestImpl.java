@@ -43,7 +43,7 @@ public class CategoryRestImpl implements CategoryRest {
     @Override
     public ResponseEntity<String> updateCategory(Map<String, String> requestMap) {
         try{
-            categoryService.updateCategory(requestMap);
+            return categoryService.updateCategory(requestMap);
         } catch (Exception ex) {
             ex.printStackTrace();
         }

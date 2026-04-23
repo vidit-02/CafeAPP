@@ -1,13 +1,13 @@
 package com.example.CafeAPP.utils;
 
-import javax.mail.MessagingException;
+import javax.mail.*;
+import javax.mail.internet.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
-import javax.mail.internet.MimeMessage;
 import java.util.List;
 
 @Service
@@ -23,11 +23,12 @@ public class EmailUtils {
         message.setSubject(subject);
         message.setText(text);
 
-        if(list!=null && list.size()>0){
+        if(list != null && !list.isEmpty()){
             message.setCc(getCCArray(list));
         }
         emailSender.send(message);
     }
+
     public void forgotMail(String dest, String subject, String password) throws MessagingException {
         MimeMessage message = emailSender.createMimeMessage();
         MimeMessageHelper helper = new MimeMessageHelper(message, true);
@@ -40,11 +41,6 @@ public class EmailUtils {
     }
 
     private String[] getCCArray(List<String> ccList){
-        String[] cc = new String[ccList.size()];
-        for(int i=0; i< ccList.size(); i++){
-            cc[i] = ccList.get(i);
-        }
-        return cc;
+        return ccList.toArray(new String[0]);
     }
-
 }

@@ -31,7 +31,7 @@ public class JwtFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
 
-        if(request.getServletPath().matches("/user/login|/user/forgetPassword|/user/signup")){
+        if(request.getServletPath().matches("/user/login|/user/forgotPassword|/user/signup|/|/user/checkToken")){
             filterChain.doFilter(request,response);  //if request path match any of the above match simply permit it and no token validation is required.
         } else {
             String authorizationHeader = request.getHeader("Authorization");
