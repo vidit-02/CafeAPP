@@ -3,6 +3,7 @@ package com.example.CafeAPP.serviceImpl;
 import com.example.CafeAPP.JWT.JwtFilter;
 import com.example.CafeAPP.constants.CafeConstants;
 import com.example.CafeAPP.dao.BillDao;
+import com.example.CafeAPP.exception.CafeException;
 import com.example.CafeAPP.model.Bill;
 import com.example.CafeAPP.service.BillService;
 import com.example.CafeAPP.utils.CafeUtils;
@@ -17,6 +18,7 @@ import org.json.JSONArray;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -44,12 +46,18 @@ public class BillServiceImpl implements BillService {
     @Override
     public ResponseEntity<String> generateReport(Map<String, Object> requestMap) {
         log.info("inside generateReport");
-        log.info("generate report map::::"+requestMap);
+        log.info("generate report map::::{}", requestMap);
         try{
             String fileName;
             if(validateRequestMap(requestMap)){
                 if(requestMap.containsKey("isGenerated") && (Boolean) requestMap.get("isGenerated")) {
                     fileName = (String) requestMap.get("uuid");
+                    if (fileName == null || fileName.trim().isEmpty()) {
+                        throw new CafeException(
+                                "UUID is missing for generated bill",
+                                HttpStatus.BAD_REQUEST
+                        );
+                    }
                 } else {
                     fileName = CafeUtils.getUUID();
                     requestMap.put("uuid",fileName);
@@ -61,7 +69,11 @@ public class BillServiceImpl implements BillService {
                 PdfWriter.getInstance(document,new FileOutputStream(CafeConstants.STORE_LOCATION+"\\"+fileName+".pdf"));
 
                 document.open();
-                setRectangleInPdf(document);
+                try {
+                    setRectangleInPdf(document);
+                } catch (DocumentException ex){
+                    throw new CafeException("Unable to generate PDF",HttpStatus.INTERNAL_SERVER_ERROR);
+                }
 
                 Paragraph heading = new Paragraph("Cafe Management System",getFont("Header"));
                 heading.setAlignment(Element.ALIGN_CENTER); //bydefault left side
@@ -87,13 +99,24 @@ public class BillServiceImpl implements BillService {
                 return new ResponseEntity<>("{\"uuid\":\""+fileName+"\"}",HttpStatus.OK);
 
             } else {
-                return CafeUtils.getResponseEntity(CafeConstants.INVALID_DATA, HttpStatus.BAD_REQUEST);
+                throw new CafeException(
+                        CafeConstants.INVALID_DATA,
+                        HttpStatus.BAD_REQUEST
+                );
             }
-        } catch (Exception ex){
-            ex.printStackTrace();
+        } catch (CafeException ex) {
+            throw ex; // already custom handled
+
+        }catch (Exception ex) {
+            log.error("Error while generating report", ex);
+
+            throw new CafeException(
+                    CafeConstants.SOMETHING_WENT_WRONG,
+                    HttpStatus.INTERNAL_SERVER_ERROR
+            );
         }
-        return CafeUtils.getResponseEntity(CafeConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
     }
+
 
      private void addRow(PdfPTable table, Map<String, Object> data) {
         log.info("inside addRow");
@@ -141,14 +164,33 @@ public class BillServiceImpl implements BillService {
             bill.setPaymentMethod((String)requestMap.get("paymentMethod"));
             bill.setTotalAmount(Integer.parseInt((String) requestMap.get("totalAmount")));
             bill.setCreatedBy(jwtFilter.getCurrentUser());
-            // Convert productDetails to JSON string
-//            ObjectMapper objectMapper = new ObjectMapper();
-//            String productDetailsJson = objectMapper.writeValueAsString(requestMap.get("productDetails"));
-//            bill.setProductDetails(productDetailsJson);
             bill.setProductDetails((String) requestMap.get("productDetails"));
             billDao.save(bill);
+        } catch (NumberFormatException ex) {
+
+            throw new CafeException(
+                    "Invalid total amount",
+                    HttpStatus.BAD_REQUEST
+            );
+
+        } catch (DataAccessException ex) {
+
+            throw new CafeException(
+                    "Unable to save bill in database",
+                    HttpStatus.INTERNAL_SERVER_ERROR
+            );
+
+        } catch (CafeException ex) {
+
+            throw ex;
+
         } catch (Exception ex) {
-            ex.printStackTrace();
+
+            log.error("Error while inserting bill", ex);
+            throw new CafeException(
+                    CafeConstants.SOMETHING_WENT_WRONG,
+                    HttpStatus.INTERNAL_SERVER_ERROR
+            );
         }
     }
 
@@ -179,12 +221,24 @@ public class BillServiceImpl implements BillService {
     @Override
     public ResponseEntity<List<Bill>> getBills() {
         List<Bill> list;
-        if(jwtFilter.isAdmin()){
-            list = billDao.getAllBills();
-        } else {
-            list=billDao.getBillByUsername(jwtFilter.getCurrentUser());
+        try{
+            if(jwtFilter.isAdmin()){
+                list = billDao.getAllBills();
+            } else {
+                list=billDao.getBillByUsername(jwtFilter.getCurrentUser());
+            }
+            return new ResponseEntity<>(list,HttpStatus.OK);
+        } catch (DataAccessException ex) {
+            log.error("unable to fetch bill from DB");
+            throw new CafeException("Unable to fetch bill from DB",HttpStatus.INTERNAL_SERVER_ERROR);
+        } catch (CafeException ex) {
+            throw ex;
+        } catch (Exception e) {
+            log.error("Error while fetching  bill",e);
+            throw new CafeException(CafeConstants.SOMETHING_WENT_WRONG,
+                    HttpStatus.INTERNAL_SERVER_ERROR);
         }
-        return new ResponseEntity<>(list,HttpStatus.OK);
+
     }
 
     @Override
@@ -193,7 +247,7 @@ public class BillServiceImpl implements BillService {
         try{
             byte[] byteArray = new byte[0];
             if(!requestMap.containsKey("uuid") && validateRequestMap(requestMap)){
-                return new ResponseEntity<>(byteArray,HttpStatus.BAD_REQUEST);
+                throw new CafeException("UUID missing",HttpStatus.BAD_REQUEST);
             }
             String filepath=CafeConstants.STORE_LOCATION+"\\"+(String) requestMap.get("uuid")+".pdf";
             if(CafeUtils.isFileExist(filepath)){
@@ -205,11 +259,28 @@ public class BillServiceImpl implements BillService {
                 byteArray=getByteArray(filepath);
                 return new ResponseEntity<>(byteArray,HttpStatus.OK);
             }
-        } catch (Exception ex){
-            ex.printStackTrace();
-        }
+        } catch (CafeException ex) {
 
-        return null;
+            throw ex;
+
+        } catch (IOException ex) {
+
+            log.error("Error reading PDF file", ex);
+
+            throw new CafeException(
+                    "Unable to read PDF file",
+                    HttpStatus.INTERNAL_SERVER_ERROR
+            );
+
+        } catch (Exception ex) {
+
+            log.error("Unexpected error while fetching PDF", ex);
+
+            throw new CafeException(
+                    CafeConstants.SOMETHING_WENT_WRONG,
+                    HttpStatus.INTERNAL_SERVER_ERROR
+            );
+        }
     }
 
     @Override
@@ -220,21 +291,55 @@ public class BillServiceImpl implements BillService {
                 billDao.deleteById(id);
                 return CafeUtils.getResponseEntity(CafeConstants.BILL_DELETED_SUCCESSFULLY,HttpStatus.OK);
             } else {
-                return CafeUtils.getResponseEntity(CafeConstants.BILL_NOT_FOUND,HttpStatus.OK);
+                throw new CafeException(
+                        CafeConstants.BILL_NOT_FOUND,
+                        HttpStatus.NOT_FOUND
+                );
             }
-        } catch (Exception ex){
-            ex.printStackTrace();
+        } catch (CafeException ex) {
+
+            throw ex;
+
+        } catch (DataAccessException ex) {
+
+            log.error("Database error while deleting bill", ex);
+
+            throw new CafeException(
+                    "Unable to delete bill",
+                    HttpStatus.INTERNAL_SERVER_ERROR
+            );
+
+        } catch (Exception ex) {
+
+            log.error("Unexpected error while deleting bill", ex);
+
+            throw new CafeException(
+                    CafeConstants.SOMETHING_WENT_WRONG,
+                    HttpStatus.INTERNAL_SERVER_ERROR
+            );
         }
-        return CafeUtils.getResponseEntity(CafeConstants.SOMETHING_WENT_WRONG,HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
-    private byte[] getByteArray(String filepath) throws IOException {
-        File file = new File(filepath);
-        InputStream targetStream = new FileInputStream(file);
-        byte[] byteArray = IOUtils.toByteArray(targetStream);
-        targetStream.close();
-        return byteArray;
+    private byte[] getByteArray(String filePath) throws IOException {
+        try (InputStream targetStream =
+                     new FileInputStream(new File(filePath))) {
 
+            return IOUtils.toByteArray(targetStream);
+
+        } catch (FileNotFoundException ex) {
+
+            throw new CafeException(
+                    "PDF file not found",
+                    HttpStatus.NOT_FOUND
+            );
+
+        } catch (IOException ex) {
+
+            throw new CafeException(
+                    "Unable to read PDF file",
+                    HttpStatus.INTERNAL_SERVER_ERROR
+            );
+        }
 
     }
 }

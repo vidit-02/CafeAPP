@@ -22,41 +22,21 @@ public class BillRestImpl implements BillRest {
 
     @Override
     public ResponseEntity<String> generateReport(Map<String, Object> requestMap) {
-        try{
-            return billService.generateReport(requestMap);
-        } catch (Exception ex){
-            ex.printStackTrace();
-        }
-        return CafeUtils.getResponseEntity(CafeConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
+       return billService.generateReport(requestMap);
     }
 
     @Override
     public ResponseEntity<List<Bill>> getBills() {
-        try{
-            return billService.getBills();
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
-        return new ResponseEntity<>(new ArrayList<>(),HttpStatus.INTERNAL_SERVER_ERROR);
+        return billService.getBills();
     }
 
     @Override
     public ResponseEntity<byte[]> getPdf(Map<String, Object> requestMap) {
-        try{
-            return billService.getPdf(requestMap);
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
-        return null;
+        return billService.getPdf(requestMap);
     }
 
     @Override
     public ResponseEntity<String> deletebill(Integer id) {
-        try{
-            return billService.deleteBill(id);
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
-        return CafeUtils.getResponseEntity(CafeConstants.SOMETHING_WENT_WRONG,HttpStatus.INTERNAL_SERVER_ERROR);
+        return billService.deleteBill(id);
     }
 }

@@ -1,5 +1,6 @@
 package com.example.CafeAPP.utils;
 
+import com.example.CafeAPP.exception.CafeException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import com.google.common.base.Strings;
@@ -46,8 +47,7 @@ public class CafeUtils {
             File file = new File(path);
             return (file != null && file.exists()) ? Boolean.TRUE : Boolean.FALSE;
         }catch (Exception ex){
-            ex.printStackTrace();
+            throw new CafeException("Unable tp find the file",HttpStatus.INTERNAL_SERVER_ERROR);
         }
-        return false;
     }
 }

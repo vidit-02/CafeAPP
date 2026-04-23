@@ -22,71 +22,36 @@ public class ProductRestImpl implements ProductRest {
 
     @Override
     public ResponseEntity<String> addNewProduct(Map<String, String> requestMap) {
-        try{
-            return productService.addNewProduct(requestMap);
-        } catch (Exception ex){
-            ex.printStackTrace();
-        }
-        return CafeUtils.getResponseEntity(CafeConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
+        return productService.addNewProduct(requestMap);
     }
 
     @Override
     public ResponseEntity<List<ProductWrapper>> getAllProducts() {
-        try{
-            return productService.getAllProducts();
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
-        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+        return productService.getAllProducts();
     }
 
     @Override
     public ResponseEntity<String> updateProduct(Map<String, String> requestMap) {
-        try{
-            return productService.updateProduct(requestMap);
-        } catch (Exception ex){
-            ex.printStackTrace();
-        }
-        return CafeUtils.getResponseEntity(CafeConstants.SOMETHING_WENT_WRONG,HttpStatus.INTERNAL_SERVER_ERROR);
+        return productService.updateProduct(requestMap);
     }
 
     @Override
     public ResponseEntity<String> deleteProduct(Integer id) {
-        try{
-            return productService.deleteProduct(id);
-        } catch (Exception ex){
-            ex.printStackTrace();
-        }
-        return CafeUtils.getResponseEntity(CafeConstants.SOMETHING_WENT_WRONG,HttpStatus.INTERNAL_SERVER_ERROR);
+        return productService.deleteProduct(id);
     }
 
     @Override
     public ResponseEntity<String> updateStatus(Map<String, String> requestMap) {
-        try{
-            return productService.updateProductStatus(requestMap);
-        } catch (Exception ex){
-            ex.printStackTrace();
-        }
-        return CafeUtils.getResponseEntity(CafeConstants.SOMETHING_WENT_WRONG,HttpStatus.INTERNAL_SERVER_ERROR);
+        return productService.updateProductStatus(requestMap);
     }
 
     @Override
     public ResponseEntity<List<ProductWrapper>> getProductByCategory(Integer id) {
-        try{
-            return productService.getProductByCategory(id);
-        } catch (Exception ex){
-            ex.printStackTrace();
-        }
-        return new ResponseEntity<>(new ArrayList<>(),HttpStatus.INTERNAL_SERVER_ERROR);
+        return productService.getProductByCategory(id);
     }
 
     @Override
     public ResponseEntity<ProductWrapper> getProductById(Integer id) {
-        try{
-            return productService.getProductById(id);
-        } catch (Exception ex){
-            ex.printStackTrace();
-        }
-        return new ResponseEntity<>(new ProductWrapper(),HttpStatus.INTERNAL_SERVER_ERROR);
+        return productService.getProductById(id);
     }
 }

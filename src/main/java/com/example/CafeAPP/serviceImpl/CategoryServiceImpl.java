@@ -4,6 +4,7 @@ import com.example.CafeAPP.CafeAppApplication;
 import com.example.CafeAPP.JWT.JwtFilter;
 import com.example.CafeAPP.constants.CafeConstants;
 import com.example.CafeAPP.dao.CategoryDao;
+import com.example.CafeAPP.exception.CafeException;
 import com.example.CafeAPP.model.Category;
 import com.example.CafeAPP.service.CategoryService;
 import com.example.CafeAPP.utils.CafeUtils;
@@ -11,6 +12,7 @@ import com.google.common.base.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -42,13 +44,21 @@ public class CategoryServiceImpl implements CategoryService {
                     return CafeUtils.getResponseEntity(CafeConstants.CATEGORY_ADDED_SUCCESSFULLY, HttpStatus.OK);
                 }
             } else {
-                return CafeUtils.getResponseEntity(CafeConstants.UNAUTHORIZED_ACCESS, HttpStatus.UNAUTHORIZED);
+                throw new CafeException(CafeConstants.UNAUTHORIZED_ACCESS,HttpStatus.UNAUTHORIZED);
             }
-        } catch (Exception ex) {
-            ex.printStackTrace();
+        }catch (DataAccessException ex) {
+            throw new CafeException(
+                    "Unable to add new category in database",
+                    HttpStatus.INTERNAL_SERVER_ERROR
+            );
+        } catch (CafeException ex) {
+            throw ex;
         }
-        log.info("something wrong");
-        return CafeUtils.getResponseEntity(CafeConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
+        catch (Exception ex) {
+            log.error("failed to add new category");
+            throw new CafeException("Failed to add new Category",HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+        return null;
     }
 
     private boolean ValidateCategoryMap(Map<String, String> requestMap, boolean validateId) { //we use validateId as when adding a category we only need name but when updating a category we will have to validate the category using Id as well hence an option
@@ -73,39 +83,103 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     public ResponseEntity<List<Category>> getAllCategory(String filterValue) {
-        try{
-            if(!Strings.isNullOrEmpty(filterValue) && filterValue.equalsIgnoreCase("true")){
-                //In case some filter value is provided
-                return new ResponseEntity<List<Category>>(categoryDao.getAllCategories(),HttpStatus.OK);
+        log.info("inside getAllCategory :: {}", filterValue);
+
+        try {
+
+            List<Category> categories;
+
+            if (!Strings.isNullOrEmpty(filterValue)
+                    && filterValue.equalsIgnoreCase("true")) {
+
+                categories = categoryDao.getAllCategories();
+
+            } else {
+                categories = categoryDao.findAll();
             }
-            return new ResponseEntity<>(categoryDao.findAll(),HttpStatus.OK); //pre=provided method by jpa to return all categories
-        } catch (Exception ex){
-            ex.printStackTrace();
+
+            return ResponseEntity.ok(categories);
+
+        } catch (DataAccessException ex) {
+
+            log.error("Database error while fetching categories", ex);
+
+            throw new CafeException(
+                    "Unable to fetch categories",
+                    HttpStatus.INTERNAL_SERVER_ERROR
+            );
+
+        } catch (Exception ex) {
+
+            log.error("Unexpected error while fetching categories", ex);
+
+            throw new CafeException(
+                    CafeConstants.SOMETHING_WENT_WRONG,
+                    HttpStatus.INTERNAL_SERVER_ERROR
+            );
         }
-        return new ResponseEntity<>(new ArrayList<>(),HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @Override
     public ResponseEntity<String> updateCategory(Map<String, String> requestMap) {
-        try{
-            if(jwtFilter.isAdmin()){
-                if(ValidateCategoryMap(requestMap,true)){
-                    Optional optional = categoryDao.findById(Integer.parseInt(requestMap.get("id")));
-                    if(!optional.isEmpty()){
-                        categoryDao.save(getCategoryFromMap(requestMap,true));
-                        return CafeUtils.getResponseEntity(CafeConstants.CATEGORY_UPDATED_SUCCESSFULLY,HttpStatus.OK);
-                    } else {
-                        return CafeUtils.getResponseEntity(CafeConstants.CATEGORY_NOT_FOUND,HttpStatus.OK);
-                    }
-                } else {
-                    return CafeUtils.getResponseEntity(CafeConstants.INVALID_DATA, HttpStatus.BAD_REQUEST);
-                }
-            } else {
-                return CafeUtils.getResponseEntity(CafeConstants.UNAUTHORIZED_ACCESS,HttpStatus.UNAUTHORIZED);
+        log.info("inside updateCategory :: {}", requestMap);
+
+        try {
+            // Admin check
+            if (!jwtFilter.isAdmin()) {
+                throw new CafeException(
+                        CafeConstants.UNAUTHORIZED_ACCESS,
+                        HttpStatus.UNAUTHORIZED
+                );
             }
+
+            // Request validation
+            if (!ValidateCategoryMap(requestMap, true)) {
+                throw new CafeException(
+                        CafeConstants.INVALID_DATA,
+                        HttpStatus.BAD_REQUEST
+                );
+            }
+            Integer id = Integer.parseInt(requestMap.get("id"));
+
+            Optional<Category> optional = categoryDao.findById(id);
+
+            if (optional.isEmpty()) {
+                throw new CafeException(
+                        CafeConstants.CATEGORY_NOT_FOUND,
+                        HttpStatus.NOT_FOUND
+                );
+            }
+            categoryDao.save(
+                    getCategoryFromMap(requestMap, true)
+            );
+            return CafeUtils.getResponseEntity(
+                    CafeConstants.CATEGORY_UPDATED_SUCCESSFULLY,
+                    HttpStatus.OK
+            );
+
+        } catch (NumberFormatException ex) {
+            throw new CafeException(
+                    "Invalid category id",
+                    HttpStatus.BAD_REQUEST
+            );
+
+        } catch (DataAccessException ex) {
+            log.error("Database error while updating category", ex);
+            throw new CafeException(
+                    "Unable to update category",
+                    HttpStatus.INTERNAL_SERVER_ERROR
+            );
+
+        } catch (CafeException ex) {
+            throw ex;
+
         } catch (Exception ex) {
-            ex.printStackTrace();
+            log.error("Unexpected error while updating category", ex);
+            throw new CafeException(
+                    CafeConstants.SOMETHING_WENT_WRONG,
+                    HttpStatus.INTERNAL_SERVER_ERROR
+            );
         }
-        return  CafeUtils.getResponseEntity(CafeConstants.SOMETHING_WENT_WRONG,HttpStatus.OK);
     }
 }

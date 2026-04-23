@@ -5,6 +5,7 @@ import com.example.CafeAPP.JWT.JwtFilter;
 import com.example.CafeAPP.JWT.JwtUtil;
 import com.example.CafeAPP.constants.CafeConstants;
 import com.example.CafeAPP.dao.UserDao;
+import com.example.CafeAPP.exception.CafeException;
 import com.example.CafeAPP.model.User;
 import com.example.CafeAPP.service.UserService;
 import com.example.CafeAPP.utils.CafeUtils;
@@ -14,9 +15,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.mail.MailException;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
@@ -27,7 +31,7 @@ import java.util.*;
 @Service
 public class UserServiceImpl implements UserService {
 
-    private static final Logger log = LoggerFactory.getLogger(UserServiceImpl.class);
+    //private static final Logger log = LoggerFactory.getLogger(UserServiceImpl.class);
     @Autowired
     UserDao userDao;
 
@@ -57,17 +61,35 @@ public class UserServiceImpl implements UserService {
                     return CafeUtils.getResponseEntity(CafeConstants.SUCCESSFULLY_REGISTERED, HttpStatus.OK);
                 }
                 else{
-                    return CafeUtils.getResponseEntity(CafeConstants.USER_ALREADY_EXIST,HttpStatus.BAD_REQUEST);
+                    throw new CafeException(CafeConstants.USER_ALREADY_EXIST,HttpStatus.BAD_REQUEST);
                 }
             }
             else {
-                return CafeUtils.getResponseEntity(CafeConstants.INVALID_DATA, HttpStatus.BAD_REQUEST);
+                throw new CafeException(CafeConstants.INVALID_DATA,HttpStatus.BAD_REQUEST);
             }
 
-        } catch (Exception e) {
-            e.printStackTrace();
+        }  catch (DataAccessException ex) {
+
+            log.error("Database error while trying to save user", ex);
+
+            throw new CafeException(
+                    "Unable to sign up user",
+                    HttpStatus.INTERNAL_SERVER_ERROR
+            );
+
+        } catch (CafeException ex) {
+
+            throw ex;
+
+        } catch (Exception ex) {
+
+            log.error("Unexpected error while trying to sign up", ex);
+
+            throw new CafeException(
+                    CafeConstants.SOMETHING_WENT_WRONG,
+                    HttpStatus.INTERNAL_SERVER_ERROR
+            );
         }
-        return CafeUtils.getResponseEntity(CafeConstants.SOMETHING_WENT_WRONG,HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     private boolean validateSignUpMap(Map<String,String> requestMap){
@@ -87,59 +109,197 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public ResponseEntity<String> login(Map<String, String> requestMap) {
-        log.info("Inside login");
+        log.info("inside login :: {}", requestMap);
+
         try {
-            Authentication authentication = authenticationManager.authenticate( new UsernamePasswordAuthenticationToken(requestMap.get("email"),requestMap.get("password")));
-            if(authentication.isAuthenticated()){
-                if(customerUserDetailsService.getUserDetails().getStatus().equalsIgnoreCase("true")) {//if true means the user is authenticated
-                    return new ResponseEntity<String>("{\"token\" : \"" + jwtUtil.generateToken(customerUserDetailsService.getUserDetails().getEmail(),customerUserDetailsService.getUserDetails().getRole()) + "\"}", HttpStatus.OK);
-                } else {
-                    return new ResponseEntity<String>("{\"message\" : \"" + "Wait for admin approval." + "\"}", HttpStatus.BAD_REQUEST);
-                }
+
+            // Validate request input
+            if (requestMap == null
+                    || requestMap.get("email") == null
+                    || requestMap.get("password") == null
+                    || requestMap.get("email").trim().isEmpty()
+                    || requestMap.get("password").trim().isEmpty()) {
+
+                throw new CafeException(
+                        CafeConstants.INVALID_DATA,
+                        HttpStatus.BAD_REQUEST
+                );
             }
-        } catch (Exception ex){
-            log.error("{}",ex);
+
+            Authentication authentication =
+                    authenticationManager.authenticate(
+                            new UsernamePasswordAuthenticationToken(
+                                    requestMap.get("email"),
+                                    requestMap.get("password")
+                            )
+                    );
+
+            if (!authentication.isAuthenticated()) {
+                throw new CafeException(
+                        CafeConstants.BAD_CREDENTIALS,
+                        HttpStatus.BAD_REQUEST
+                );
+            }
+
+            // Approved user check
+            if (!customerUserDetailsService
+                    .getUserDetails()
+                    .getStatus()
+                    .equalsIgnoreCase("true")) {
+
+                throw new CafeException(
+                        "Wait for admin approval.",
+                        HttpStatus.FORBIDDEN
+                );
+            }
+
+            String token =
+                    jwtUtil.generateToken(
+                            customerUserDetailsService
+                                    .getUserDetails()
+                                    .getEmail(),
+
+                            customerUserDetailsService
+                                    .getUserDetails()
+                                    .getRole()
+                    );
+
+            return ResponseEntity.ok(
+                    "{\"token\":\"" + token + "\"}"
+            );
+
+        } catch (DisabledException ex) {
+
+            throw new CafeException(
+                    "Account disabled",
+                    HttpStatus.FORBIDDEN
+            );
+
+        } catch (CafeException ex) {
+
+            throw ex;
+
+        } catch (Exception ex) {
+
+            log.error("Unexpected error during login", ex);
+
+            throw new CafeException(
+                    CafeConstants.SOMETHING_WENT_WRONG,
+                    HttpStatus.INTERNAL_SERVER_ERROR
+            );
         }
-        return CafeUtils.getResponseEntity(CafeConstants.BAD_CREDENTIALS,HttpStatus.BAD_REQUEST);
     }
 
     @Override
-    public ResponseEntity<List<UserWrapper>> getAllUsers(){
-        log.info("Inside getAllUsers");
-        try{
-            if(jwtFilter.isAdmin()){
-                return new ResponseEntity<>(userDao.getAllUsers(), HttpStatus.OK);
-            } else {
-                return new ResponseEntity<>(new ArrayList<>(), HttpStatus.UNAUTHORIZED);
+    public ResponseEntity<List<UserWrapper>> getAllUsers() {
+        log.info("inside getAllUsers");
+
+        try {
+
+            if (!jwtFilter.isAdmin()) {
+                throw new CafeException(
+                        CafeConstants.UNAUTHORIZED_ACCESS,
+                        HttpStatus.UNAUTHORIZED
+                );
             }
 
+            return ResponseEntity.ok(
+                    userDao.getAllUsers()
+            );
+
+        } catch (DataAccessException ex) {
+
+            log.error("Database error while fetching users", ex);
+
+            throw new CafeException(
+                    "Unable to fetch users",
+                    HttpStatus.INTERNAL_SERVER_ERROR
+            );
+
+        } catch (CafeException ex) {
+
+            throw ex;
+
         } catch (Exception ex) {
-            ex.printStackTrace();
+
+            log.error("Unexpected error while fetching users", ex);
+
+            throw new CafeException(
+                    CafeConstants.SOMETHING_WENT_WRONG,
+                    HttpStatus.INTERNAL_SERVER_ERROR
+            );
         }
-        return new ResponseEntity<>( new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @Override
     public ResponseEntity<String> updateStatus(Map<String, String> requestMap) {
-        log.info("Inside update status function");
-        try{
-            if(jwtFilter.isAdmin()){
-                Optional<User> optionalUser = userDao.findById(Integer.parseInt(requestMap.get("id")));
-                if(optionalUser.isPresent()){
-                    userDao.updateStatus(requestMap.get("status"), Integer.parseInt(requestMap.get("id")));
-                    sendMailToAllAdmins(requestMap.get("status"),optionalUser.get().getEmail(),userDao.getAllAdminsEmail());
-                    return CafeUtils.getResponseEntity(CafeConstants.USER_STATUS_UPDATED_SUCCESSFULLY, HttpStatus.OK);
-                } else {
-                    return CafeUtils.getResponseEntity(CafeConstants.USER_NOT_FOUND,HttpStatus.OK);
-                }
+        log.info("inside updateStatus :: {}", requestMap);
 
-            } else {
-                return CafeUtils.getResponseEntity(CafeConstants.UNAUTHORIZED_ACCESS, HttpStatus.UNAUTHORIZED);
+        try {
+
+            if (!jwtFilter.isAdmin()) {
+                throw new CafeException(
+                        CafeConstants.UNAUTHORIZED_ACCESS,
+                        HttpStatus.UNAUTHORIZED
+                );
             }
+
+            Integer id = Integer.parseInt(requestMap.get("id"));
+
+            Optional<User> optionalUser = userDao.findById(id);
+
+            if (optionalUser.isEmpty()) {
+                throw new CafeException(
+                        CafeConstants.USER_NOT_FOUND,
+                        HttpStatus.NOT_FOUND
+                );
+            }
+
+            userDao.updateStatus(
+                    requestMap.get("status"),
+                    id
+            );
+
+            sendMailToAllAdmins(
+                    requestMap.get("status"),
+                    optionalUser.get().getEmail(),
+                    userDao.getAllAdminsEmail()
+            );
+
+            return CafeUtils.getResponseEntity(
+                    CafeConstants.USER_STATUS_UPDATED_SUCCESSFULLY,
+                    HttpStatus.OK
+            );
+
+        } catch (NumberFormatException ex) {
+
+            throw new CafeException(
+                    "Invalid user id",
+                    HttpStatus.BAD_REQUEST
+            );
+
+        } catch (DataAccessException ex) {
+
+            log.error("Database error while updating user status", ex);
+
+            throw new CafeException(
+                    "Unable to update user status",
+                    HttpStatus.INTERNAL_SERVER_ERROR
+            );
+
+        } catch (CafeException ex) {
+
+            throw ex;
+
         } catch (Exception ex) {
-            ex.printStackTrace();
+
+            log.error("Unexpected error while updating user status", ex);
+
+            throw new CafeException(
+                    CafeConstants.SOMETHING_WENT_WRONG,
+                    HttpStatus.INTERNAL_SERVER_ERROR
+            );
         }
-        return CafeUtils.getResponseEntity(CafeConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @Override
@@ -148,47 +308,155 @@ public class UserServiceImpl implements UserService {
         return CafeUtils.getResponseEntity("true",HttpStatus.OK);
     }
 
+
     @Override
     public ResponseEntity<String> changePassword(Map<String, String> requestMap) {
-        log.info("Inside changePassword function");
-        try{
-            User user = userDao.findByEmailId(jwtFilter.getCurrentUser());
-            if(user != null){
-                if(user.getPassword().equals(requestMap.get("oldPassword"))){
-                    user.setPassword(requestMap.get("newPassword"));
-                    userDao.save(user);
-                    return CafeUtils.getResponseEntity(CafeConstants.PASSWORD_CHANGED_SUCCESSFULLY, HttpStatus.OK);
-                }
-                return CafeUtils.getResponseEntity(CafeConstants.INCORRECT_OLD_PASSWORD, HttpStatus.BAD_REQUEST);
+        log.info("inside changePassword");
+
+        try {
+
+            User user = userDao.findByEmailId(
+                    jwtFilter.getCurrentUser()
+            );
+
+            if (user == null) {
+                throw new CafeException(
+                        CafeConstants.USER_NOT_FOUND,
+                        HttpStatus.NOT_FOUND
+                );
             }
+
+            if (!user.getPassword().equals(
+                    requestMap.get("oldPassword"))) {
+
+                throw new CafeException(
+                        CafeConstants.INCORRECT_OLD_PASSWORD,
+                        HttpStatus.BAD_REQUEST
+                );
+            }
+
+            user.setPassword(
+                    requestMap.get("newPassword")
+            );
+
+            userDao.save(user);
+
+            return CafeUtils.getResponseEntity(
+                    CafeConstants.PASSWORD_CHANGED_SUCCESSFULLY,
+                    HttpStatus.OK
+            );
+
+        } catch (DataAccessException ex) {
+
+            log.error("Database error while changing password", ex);
+
+            throw new CafeException(
+                    "Unable to change password",
+                    HttpStatus.INTERNAL_SERVER_ERROR
+            );
+
+        } catch (CafeException ex) {
+
+            throw ex;
+
         } catch (Exception ex) {
-            ex.printStackTrace();
+
+            log.error("Unexpected error while changing password", ex);
+
+            throw new CafeException(
+                    CafeConstants.SOMETHING_WENT_WRONG,
+                    HttpStatus.INTERNAL_SERVER_ERROR
+            );
         }
-        return CafeUtils.getResponseEntity(CafeConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @Override
     public ResponseEntity<String> forgotPassword(Map<String, String> requestMap) {
-        log.info("Inside forgotPassword function");
-        try{
-            User user = userDao.findByEmailId(requestMap.get("email"));
-            if(user != null){
-                emailUtils.forgotMail(user.getEmail(),"Credentials by Cafe Managment System",user.getPassword());
+        log.info("inside forgotPassword :: {}", requestMap);
+
+        try {
+
+            User user = userDao.findByEmailId(
+                    requestMap.get("email")
+            );
+
+            if (user != null) {
+                emailUtils.forgotMail(
+                        user.getEmail(),
+                        "Credentials by Cafe Management System",
+                        user.getPassword()
+                );
             }
-            return CafeUtils.getResponseEntity("Check you mail for credentials", HttpStatus.OK); //outside if block so that even if user not registered it sends the same link
+
+            return CafeUtils.getResponseEntity(
+                    "Check your mail for credentials",
+                    HttpStatus.OK
+            );
+
+        } catch (MailException ex) {
+
+            log.error("Email error while forgot password", ex);
+
+            throw new CafeException(
+                    "Unable to send email",
+                    HttpStatus.INTERNAL_SERVER_ERROR
+            );
+
         } catch (Exception ex) {
-            ex.printStackTrace();
+
+            log.error("Unexpected error while forgot password", ex);
+
+            throw new CafeException(
+                    CafeConstants.SOMETHING_WENT_WRONG,
+                    HttpStatus.INTERNAL_SERVER_ERROR
+            );
         }
-        return CafeUtils.getResponseEntity(CafeConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
-    private void sendMailToAllAdmins(String status, String email, List<String> allAdminsEmail) {
-        log.info("Inside send mail function");
-        allAdminsEmail.remove(jwtFilter.getCurrentUser());  //to remove the admin from the cc list of all admins, as his name will already be there in the destination
-        if(status!= null && status.equalsIgnoreCase("true")){  //user is enabled
-            emailUtils.sendSimpleMessage(jwtFilter.getCurrentUser(),"Account Approved", "user : "+email+"\n is approved by \nADMIN:"+jwtFilter.getCurrentUser(),allAdminsEmail);
-        } else { //in case user is disabled
-            emailUtils.sendSimpleMessage(jwtFilter.getCurrentUser(),"Account Disabled", "user : "+email+"\n is disabled by \nADMIN:"+jwtFilter.getCurrentUser(),allAdminsEmail);
+    private void sendMailToAllAdmins(
+            String status,
+            String email,
+            List<String> allAdminsEmail) {
+
+        log.info("inside sendMailToAllAdmins");
+
+        try {
+
+            allAdminsEmail.remove(
+                    jwtFilter.getCurrentUser()
+            );
+
+            if ("true".equalsIgnoreCase(status)) {
+
+                emailUtils.sendSimpleMessage(
+                        jwtFilter.getCurrentUser(),
+                        "Account Approved",
+                        "user : " + email
+                                + "\n is approved by \nADMIN:"
+                                + jwtFilter.getCurrentUser(),
+                        allAdminsEmail
+                );
+
+            } else {
+
+                emailUtils.sendSimpleMessage(
+                        jwtFilter.getCurrentUser(),
+                        "Account Disabled",
+                        "user : " + email
+                                + "\n is disabled by \nADMIN:"
+                                + jwtFilter.getCurrentUser(),
+                        allAdminsEmail
+                );
+            }
+
+        } catch (Exception ex) {
+
+            log.error("Error while sending admin mail", ex);
+
+            throw new CafeException(
+                    "Unable to send notification email",
+                    HttpStatus.INTERNAL_SERVER_ERROR
+            );
         }
     }
 }
