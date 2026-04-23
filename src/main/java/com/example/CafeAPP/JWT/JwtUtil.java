@@ -3,6 +3,7 @@ package com.example.CafeAPP.JWT;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
@@ -15,7 +16,8 @@ import java.util.function.Function;
 @Service
 public class JwtUtil {
 
-    private final String secret="u9Rz2B5vlHeQJ6kzQqVJzxQcM1pdhzBzP0kD0lscq0s=";
+    @Value("${JWT_SECRET}")
+    private String secret;
 
     public String extractUsername (String token) {
         return extractClaims(token,Claims::getSubject);

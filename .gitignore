@@ -1,2 +1,3 @@
 target/
 ../../cafe-stored-files/
+.env
