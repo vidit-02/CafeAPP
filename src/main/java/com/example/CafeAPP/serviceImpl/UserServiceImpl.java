@@ -20,6 +20,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mail.MailException;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -134,16 +135,9 @@ public class UserServiceImpl implements UserService {
                             )
                     );
 
-            if (!authentication.isAuthenticated()) {
-                throw new CafeException(
-                        CafeConstants.BAD_CREDENTIALS,
-                        HttpStatus.BAD_REQUEST
-                );
-            }
-
             // Approved user check
             if (!customerUserDetailsService
-                    .getUserDetails()
+                    .findUserByEmail(requestMap.get("email"))
                     .getStatus()
                     .equalsIgnoreCase("true")) {
 
@@ -156,16 +150,23 @@ public class UserServiceImpl implements UserService {
             String token =
                     jwtUtil.generateToken(
                             customerUserDetailsService
-                                    .getUserDetails()
+                                    .findUserByEmail(requestMap.get("email"))
                                     .getEmail(),
 
                             customerUserDetailsService
-                                    .getUserDetails()
+                                    .findUserByEmail(requestMap.get("email"))
                                     .getRole()
                     );
 
             return ResponseEntity.ok(
                     "{\"token\":\"" + token + "\"}"
+            );
+
+        }  catch (BadCredentialsException ex) {
+
+            throw new CafeException(
+                    CafeConstants.BAD_CREDENTIALS,
+                    HttpStatus.UNAUTHORIZED
             );
 
         } catch (DisabledException ex) {
@@ -193,6 +194,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public ResponseEntity<List<UserWrapper>> getAllUsers() {
         log.info("inside getAllUsers");
+        //to get users with user role only..
 
         try {
 

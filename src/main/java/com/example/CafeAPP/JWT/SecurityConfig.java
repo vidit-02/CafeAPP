@@ -49,7 +49,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         //configuration.addAllowedOrigin("http://cafeapp-frontend.s3-website.ap-south-1.amazonaws.com");  // Your frontend URL
-        configuration.addAllowedOrigin("http://localhost:4200/");
+        configuration.addAllowedOrigin("http://localhost:4200");
         configuration.addAllowedMethod("*");  // Allow all HTTP methods (GET, POST, etc.)
         configuration.addAllowedHeader("*");  // Allow all headers
         configuration.setAllowCredentials(true);  // Allow credentials (cookies, authorization headers)
