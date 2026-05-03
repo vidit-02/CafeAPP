@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 
+@RestController
 @RequestMapping(path = "/bill")
 public interface BillRest {
 
@@ -21,5 +22,8 @@ public interface BillRest {
 
     @PostMapping(path = "/delete/{id}")
     ResponseEntity<String> deletebill(@PathVariable Integer id);
+
+    @GetMapping(path = "/status/{uuid}")
+    ResponseEntity<Map<String,String>> getStatus(@PathVariable String uui);
 
 }

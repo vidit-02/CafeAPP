@@ -32,7 +32,7 @@ public class Product implements Serializable {
     @Column(name = "name")
     private String name;
 
-    @ManyToOne(fetch = FetchType.LAZY) //this means when we fetch all products it won't fetch all Category columns unless we specifically fetch a category
+    @ManyToOne(fetch = FetchType.EAGER) //this means when we fetch all products it won't fetch all Category columns unless we specifically fetch a category
     //many products to one category
     @JoinColumn(name = "category_fk", nullable = false) //every product need to have a category
     private Category category;

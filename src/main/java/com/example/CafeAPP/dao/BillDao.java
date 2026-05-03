@@ -12,4 +12,6 @@ public interface BillDao extends JpaRepository<Bill, Integer>{
     List<Bill> getAllBills();
 
     List<Bill> getBillByUsername(@Param("username") String currentUser);
+
+    Bill findByUuid(String uuid);
 }

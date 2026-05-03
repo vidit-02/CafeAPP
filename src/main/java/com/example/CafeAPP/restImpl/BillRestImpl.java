@@ -8,6 +8,7 @@ import com.example.CafeAPP.utils.CafeUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.ArrayList;
@@ -38,5 +39,9 @@ public class BillRestImpl implements BillRest {
     @Override
     public ResponseEntity<String> deletebill(Integer id) {
         return billService.deleteBill(id);
+    }
+
+    public ResponseEntity<Map<String,String>> getStatus(@PathVariable String uuid) {
+        return billService.getBillStatus(uuid);
     }
 }

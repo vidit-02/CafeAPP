@@ -1,10 +1,8 @@
 package com.example.CafeAPP.model;
 
 import lombok.Data;
-import org.hibernate.Interceptor;
 import org.hibernate.annotations.DynamicInsert;
 import org.hibernate.annotations.DynamicUpdate;
-import org.hibernate.annotations.Type;
 
 import javax.persistence.*;
 import java.io.Serializable;
@@ -51,4 +49,6 @@ public class Bill implements Serializable {
     @Column(name = "createdBy")
     private String createdBy;
 
+    @Column(name = "pdfStatus")
+    private String pdfStatus;
 }
