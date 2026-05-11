@@ -7,6 +7,8 @@ import com.example.CafeAPP.wrapper.BillWrapper;
 import com.itextpdf.text.*;
 import com.itextpdf.text.pdf.*;
 import org.json.JSONArray;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import java.io.FileOutputStream;
@@ -17,6 +19,9 @@ import java.util.stream.Stream;
 public class PdfService {
 
     private final BillDao billRepository;
+
+    @Autowired
+    private SimpMessagingTemplate messagingTemplate;
 
     public PdfService(BillDao billRepository) {
         this.billRepository = billRepository;
@@ -67,6 +72,10 @@ public class PdfService {
 
             // ✅ update DB status
             updateStatus(fileName, "GENERATED");
+            messagingTemplate.convertAndSend(
+                    "/topic/bill/" + event.getUuid(),
+                    "PDF_READY"
+            );
 
         } catch (Exception ex) {
             updateStatus(fileName, "FAILED");
