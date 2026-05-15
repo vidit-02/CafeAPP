@@ -10,4 +10,12 @@ public class AnalyticsSummaryWrapper {
     private List<ProductSalesWrapper> topProducts;
     private Map<String,Integer> categoryRevenue;
     private List<AiInsightWrapper> aiInsights;
+
+    public AnalyticsSummaryWrapper(Integer totalRevenue, Integer totalBills, List<ProductSalesWrapper> topProducts, Map<String, Integer> categoryRevenue, List<AiInsightWrapper> aiInsights) {
+        this.totalRevenue = totalRevenue;
+        this.totalBills = totalBills;
+        this.topProducts = topProducts;
+        this.categoryRevenue = categoryRevenue;
+        this.aiInsights = aiInsights;
+    }
 }

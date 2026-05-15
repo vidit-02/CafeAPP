@@ -5,6 +5,7 @@ import com.example.CafeAPP.model.Bill;
 import com.example.CafeAPP.service.AnalyticsBoardService;
 import com.example.CafeAPP.wrapper.AnalyticsSummaryWrapper;
 import com.example.CafeAPP.wrapper.ProductDetailsWrapper;
+import com.example.CafeAPP.wrapper.ProductSalesWrapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -13,10 +14,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 
 @Service
@@ -74,12 +72,33 @@ public class AnalyticsBoardServiceImpl implements AnalyticsBoardService {
         System.out.println(categoryRevenueMap);
         System.out.println(totalRevenue);
 
+        List<ProductSalesWrapper> topProducts = new ArrayList<>();
 
-        AnalyticsSummaryWrapper analyticsSummaryWrapper = new AnalyticsSummaryWrapper();
+        for (String productName : productQuantityMap.keySet()) {
 
-        return new ResponseEntity<AnalyticsSummaryWrapper>(analyticsSummaryWrapper, HttpStatus.OK);
+            ProductSalesWrapper dto = new ProductSalesWrapper();
+
+            dto.setProductName(productName);
+
+            dto.setQuantitySold(
+                    productQuantityMap.get(productName)
+            );
+
+            dto.setRevenue(
+                    productRevenueMap.get(productName)
+            );
+
+            topProducts.add(dto);
+        }
+
+        //sorting top products based on revenue
+        topProducts.sort(
+                (a, b) -> b.getRevenue() - a.getRevenue()
+        );
 
 
+        AnalyticsSummaryWrapper analyticsSummaryWrapper = new AnalyticsSummaryWrapper(totalRevenue,bills.size(),topProducts,categoryRevenueMap,null);
 
+        return new ResponseEntity<>(analyticsSummaryWrapper, HttpStatus.OK);
     }
 }
