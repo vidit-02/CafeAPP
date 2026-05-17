@@ -5,6 +5,7 @@ import com.example.CafeAPP.constants.CafeConstants;
 import com.example.CafeAPP.dao.BillDao;
 import com.example.CafeAPP.exception.CafeException;
 import com.example.CafeAPP.model.Bill;
+import com.example.CafeAPP.service.AnalyticsCacheService;
 import com.example.CafeAPP.service.BillService;
 import com.example.CafeAPP.utils.BillEventProducer;
 import com.example.CafeAPP.utils.CafeUtils;
@@ -48,6 +49,9 @@ public class BillServiceImpl implements BillService {
     @Autowired
     private BillEventProducer billEventProducer;
 
+    @Autowired
+    AnalyticsCacheService cacheService;
+
     private static final Logger log = LoggerFactory.getLogger(BillServiceImpl.class);
 
     @Override
@@ -70,6 +74,8 @@ public class BillServiceImpl implements BillService {
                     requestMap.put("uuid",fileName);
                     insertBill(requestMap);
                 }
+
+                cacheService.invalidateCache();
 
                 BillWrapper event = new BillWrapper();
                 event.setUuid(fileName);

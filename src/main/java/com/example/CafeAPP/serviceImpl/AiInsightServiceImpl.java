@@ -2,21 +2,25 @@ package com.example.CafeAPP.serviceImpl;
 
 import com.example.CafeAPP.exception.CafeException;
 import com.example.CafeAPP.service.AiInsightService;
+import com.example.CafeAPP.service.AnalyticsCacheService;
 import com.example.CafeAPP.wrapper.AiInsightWrapper;
 import com.example.CafeAPP.wrapper.AnalyticsSummaryWrapper;
 import com.example.CafeAPP.wrapper.ProductSalesWrapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+@Service
 public class AiInsightServiceImpl implements AiInsightService {
     @Value("${gemini.api.key}")
     private String apiKey;
@@ -30,9 +34,10 @@ public class AiInsightServiceImpl implements AiInsightService {
         this.webClient = webClientBuilder.build();
     }
 
+
+
     @Override
     public AiInsightWrapper generateInsights(AnalyticsSummaryWrapper analytics) {
-
 
         try {
 
@@ -118,8 +123,11 @@ public class AiInsightServiceImpl implements AiInsightService {
 
         prompt.append("""
             You are an AI business analyst for a cafe.
-
             Analyze the following analytics data.
+            Do not include markdown.
+            Do not include explanations.
+            Only use the provided analytics data.
+            Do not assume missing values.
 
             Return ONLY valid JSON in this format:
 

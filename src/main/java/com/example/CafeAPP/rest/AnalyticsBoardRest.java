@@ -15,6 +15,6 @@ public interface AnalyticsBoardRest {
     ResponseEntity<AnalyticsSummaryWrapper> getAnalytics();
 
     @GetMapping(path = "/ai-summary")
-    ResponseEntity<AiInsightWrapper> getAiSummary();
+    ResponseEntity<AnalyticsSummaryWrapper> getAiSummary();
 
 }

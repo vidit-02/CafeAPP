@@ -60,7 +60,11 @@ public class AnalyticsBoardServiceImpl implements AnalyticsBoardService {
                         Integer.parseInt(product.getQuantity()),
                         Integer::sum
                 );
-                categoryRevenueMap.merge(product.getCategory(),1,Integer::sum);
+                categoryRevenueMap.merge(
+                        product.getCategory(),
+                        product.getTotal(),
+                        Integer::sum
+                );
 
                 productRevenueMap.merge(product.getName(),product.getTotal(),Integer::sum);
 
